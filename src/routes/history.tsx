@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/api";
+import { LoadingState, ErrorState } from "@/components/ApiState";
 import { format } from "date-fns";
 import { PageHeader } from "@/components/PageHeader";
 import {
@@ -308,10 +310,57 @@ function HistoryPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Sim | null>(null);
+  const [apiSims, setApiSims] = useState<Sim[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.simulations
+      .getAll()
+      .then((data) => {
+        if (!active) return;
+        const list: any[] = Array.isArray(data) ? data : (data?.simulations ?? []);
+        const mapped: Sim[] = list.map((r: any, i: number) => {
+          const triggerRaw = (r.trigger ?? r.triggerType ?? r.triggerSystem ?? "Power").toString();
+          const trigger = (
+            ["Power", "Transport", "Water", "Healthcare", "Telecom", "Emergency"].find((s) =>
+              triggerRaw.toLowerCase().includes(s.toLowerCase()),
+            ) ?? "Power"
+          ) as SystemKey;
+          return {
+            id: r.id ?? r.simulationId ?? `SIM-${String(i + 1).padStart(4, "0")}`,
+            scenario: r.scenarioName ?? r.scenario ?? "Untitled scenario",
+            trigger,
+            triggerNode: r.triggerNode ?? r.trigger_node ?? "—",
+            failedCount: r.failedCount ?? r.failed_nodes_count ?? (r.failedSystems?.length ?? 0),
+            failedSystems: (r.failedSystems ?? [trigger]) as SystemKey[],
+            mitigations: r.mitigations ?? r.mitigation ? (Array.isArray(r.mitigations) ? r.mitigations : [r.mitigation]) : [],
+            recovery: r.recovery ?? r.recoveryTime ?? "—",
+            date: new Date(r.date ?? r.createdAt ?? Date.now()),
+            cascade: Array.isArray(r.cascade) ? r.cascade : [1, 1, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0],
+            metrics: {
+              downtime: r.metrics?.downtime ?? r.downtime ?? "—",
+              responseDelay: r.metrics?.responseDelay ?? "—",
+              cascadeDepth: r.metrics?.cascadeDepth ?? r.cascadeDepth ?? 1,
+              resilience: r.metrics?.resilience ?? r.resilience ?? 70,
+            },
+          };
+        });
+        if (mapped.length) setApiSims(mapped);
+      })
+      .catch((e) => active && setError(e?.message ?? "Network error"))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const SOURCE: Sim[] = apiSims ?? SIMULATIONS;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return SIMULATIONS.filter((s) => {
+    return SOURCE.filter((s) => {
       if (systemFilter !== "all" && s.trigger !== systemFilter) return false;
       if (dateRange?.from && s.date < dateRange.from) return false;
       if (dateRange?.to) {
@@ -325,31 +374,30 @@ function HistoryPage() {
       }
       return true;
     });
-  }, [search, systemFilter, dateRange]);
+  }, [search, systemFilter, dateRange, SOURCE]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const stats = useMemo(() => {
-    const total = SIMULATIONS.length;
+    const total = SOURCE.length;
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    const thisWeek = SIMULATIONS.filter((s) => {
-      // Count "this week" relative to most recent simulation date
+    const thisWeek = SOURCE.filter((s) => {
       const ref = new Date("2026-04-25");
       const cutoff = new Date(ref);
       cutoff.setDate(ref.getDate() - 7);
       return s.date >= cutoff;
     }).length;
-    const avgRes = Math.round(
-      SIMULATIONS.reduce((a, s) => a + s.metrics.resilience, 0) / total,
-    );
+    const avgRes = total
+      ? Math.round(SOURCE.reduce((a, s) => a + s.metrics.resilience, 0) / total)
+      : 0;
     return { total, thisWeek, avgRes };
-  }, []);
+  }, [SOURCE]);
 
   const exportAll = () => {
-    const blob = new Blob([JSON.stringify(SIMULATIONS, null, 2)], {
+    const blob = new Blob([JSON.stringify(SOURCE, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
@@ -382,6 +430,9 @@ function HistoryPage() {
           </Button>
         }
       />
+
+      {loading && <div className="mb-4"><LoadingState label="Fetching simulation history…" /></div>}
+      {error && <div className="mb-4"><ErrorState message={error} /></div>}
 
       {/* Summary chips */}
       <div className="mb-4 flex flex-wrap items-center gap-2">

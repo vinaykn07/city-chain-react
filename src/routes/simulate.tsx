@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { simStore } from "@/lib/simulation-store";
 import { notify } from "@/lib/notify";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/simulate")({
   head: () => ({
@@ -204,6 +205,8 @@ function SimulatePage() {
   });
   const [propagating, setPropagating] = useState<SystemKey | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiLoading, setApiLoading] = useState(false);
   const tickRef = useRef<number | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -259,11 +262,42 @@ function SimulatePage() {
     simStore.stop();
   };
 
-  const startSim = () => {
+  const startSim = async () => {
     resetSimState();
     setRunning(true);
+    setApiError(null);
+    setApiLoading(true);
     simStore.start(`Origin: ${originSystem}`);
     notify.failure(`${originSystem} ${originComponent}`);
+
+    // Fire backend simulation
+    try {
+      const scenarioName =
+        SCENARIOS.find(
+          (s) => s.origin === originSystem && s.component === originComponent,
+        )?.title ?? `${originSystem} failure`;
+      const resp = await api.simulations.run({
+        scenarioName,
+        triggerNode: originComponent,
+        failureIntensity: INTENSITY[intensity].label,
+      });
+      const cascade: any[] =
+        resp?.cascade ?? resp?.cascadeLog ?? resp?.log ?? [];
+      if (Array.isArray(cascade) && cascade.length) {
+        setLogs((l) => [
+          ...l,
+          ...cascade.map((c: any, i: number) => ({
+            t: typeof c.t === "number" ? c.t : i,
+            kind: (c.kind ?? "info") as LogKind,
+            text: typeof c === "string" ? c : (c.text ?? c.message ?? JSON.stringify(c)),
+          })),
+        ]);
+      }
+    } catch (e: any) {
+      setApiError(e?.message ?? "Network error");
+    } finally {
+      setApiLoading(false);
+    }
 
     const propagationOrder: SystemKey[] = (() => {
       const order: SystemKey[] = [originSystem];
@@ -793,7 +827,9 @@ function SimulatePage() {
                 {logs.length} events
               </Badge>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
+              {apiLoading && <div className="text-[11px] text-muted-foreground">Calling /api/simulations…</div>}
+              {apiError && <div className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">API error: {apiError}</div>}
               <div className="h-[220px] overflow-auto rounded-md border border-border/40 bg-[oklch(0.12_0.02_256)] p-3 font-mono text-xs">
                 {logs.length === 0 ? (
                   <p className="text-muted-foreground">

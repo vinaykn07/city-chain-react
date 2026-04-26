@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/api";
+import { LoadingState, ErrorState } from "@/components/ApiState";
 import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
@@ -127,6 +129,26 @@ const PAGE_SIZE = 6;
 function AnalyticsPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [summary, setSummary] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.simulations
+      .getSummary()
+      .then((d) => active && setSummary(d ?? null))
+      .catch((e) => active && setError(e?.message ?? "Network error"))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const avgDowntime = summary?.avgDowntime ?? summary?.averageDowntime ?? 22;
+  const avgRecovery = summary?.avgRecovery ?? summary?.averageRecovery ?? 14;
+  const avgResilience = summary?.avgResilience ?? summary?.averageResilience ?? null;
+
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -160,6 +182,15 @@ function AnalyticsPage() {
         }
       />
 
+      {loading && <div className="mb-4"><LoadingState label="Fetching simulation summary…" /></div>}
+      {error && <div className="mb-4"><ErrorState message={error} /></div>}
+      {avgResilience !== null && (
+        <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-1.5 text-xs text-success">
+          <span className="font-semibold">Avg Resilience:</span>
+          <span className="font-mono tabular-nums">{avgResilience}%</span>
+        </div>
+      )}
+
       {/* Row 1 — KPI cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="glass border-border/50">
@@ -169,7 +200,7 @@ function AnalyticsPage() {
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">
                   Avg System Downtime
                 </p>
-                <p className="mt-2 text-3xl font-bold">22 <span className="text-lg font-medium text-muted-foreground">min</span></p>
+                <p className="mt-2 text-3xl font-bold">{avgDowntime} <span className="text-lg font-medium text-muted-foreground">min</span></p>
                 <p className="mt-1 flex items-center gap-1 text-xs text-success">
                   <TrendingDown className="h-3 w-3" /> -12% vs last month
                 </p>
@@ -188,7 +219,7 @@ function AnalyticsPage() {
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">
                   Mean Recovery Time
                 </p>
-                <p className="mt-2 text-3xl font-bold">14 <span className="text-lg font-medium text-muted-foreground">min</span></p>
+                <p className="mt-2 text-3xl font-bold">{avgRecovery} <span className="text-lg font-medium text-muted-foreground">min</span></p>
                 <p className="mt-1 text-xs text-muted-foreground">across 248 simulations</p>
               </div>
               <div className="rounded-lg border border-primary/30 bg-primary/15 p-2">

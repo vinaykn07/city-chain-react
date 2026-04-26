@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { notify } from "@/lib/notify";
+import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
@@ -222,7 +223,7 @@ function MitigationPage() {
 
             <Button
               className="w-full gap-2"
-              onClick={() => { setPowerActive((v) => { const nv = !v; if (nv) notify.mitigation("Backup power deployed"); return nv; }); }}
+              onClick={() => { setPowerActive((v) => { const nv = !v; if (nv) { notify.mitigation("Backup power deployed"); api.mitigation.apply({ type: "backup_power", targetNodes: powerTargets }).catch((e) => notify.failure(`API error: ${e?.message ?? "unknown"}`)); } return nv; }); }}
             >
               <BatteryCharging className="h-4 w-4" />
               {powerActive ? "Deactivate" : "Deploy Now"}
@@ -312,7 +313,7 @@ function MitigationPage() {
             <Button
               className="w-full gap-2 text-white hover:opacity-90"
               style={{ backgroundColor: "oklch(0.62 0.22 305)" }}
-              onClick={() => { setRerouteActive((v) => { const nv = !v; if (nv) notify.mitigation("Traffic rerouting activated"); return nv; }); }}
+              onClick={() => { setRerouteActive((v) => { const nv = !v; if (nv) { notify.mitigation("Traffic rerouting activated"); api.mitigation.apply({ type: "traffic_reroute", targetNodes: [route] }).catch((e) => notify.failure(`API error: ${e?.message ?? "unknown"}`)); } return nv; }); }}
             >
               <RouteIcon className="h-4 w-4" />
               {rerouteActive ? "Deactivate" : "Activate Rerouting"}
@@ -401,7 +402,7 @@ function MitigationPage() {
             <Button
               variant="destructive"
               className="w-full gap-2"
-              onClick={() => { setPriorityActive((v) => { const nv = !v; if (nv) notify.mitigation("Emergency prioritization applied"); return nv; }); }}
+              onClick={() => { setPriorityActive((v) => { const nv = !v; if (nv) { notify.mitigation("Emergency prioritization applied"); api.mitigation.apply({ type: "emergency_priority", targetNodes: priorities }).catch((e) => notify.failure(`API error: ${e?.message ?? "unknown"}`)); } return nv; }); }}
             >
               <ShieldAlert className="h-4 w-4" />
               {priorityActive ? "Deactivate" : "Apply Prioritization"}

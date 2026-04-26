@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api } from "@/lib/api";
+import { LoadingState, ErrorState } from "@/components/ApiState";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -183,8 +185,51 @@ function GraphPage() {
   const [filter, setFilter] = useState<SystemKey | "all">("all");
   const [zoom, setZoom] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [apiLoading, setApiLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const dragRef = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.nodes
+      .getAll()
+      .then((data) => {
+        if (!active) return;
+        const list: any[] = Array.isArray(data) ? data : (data?.nodes ?? []);
+        if (!list.length) return;
+        setNodes((prev) =>
+          prev.map((n) => {
+            const match = list.find((r: any) => {
+              const code = (r.code ?? r.node_id ?? r.id ?? "").toString().toLowerCase();
+              const name = (r.name ?? "").toString().toLowerCase();
+              return (
+                code.startsWith(n.code.toLowerCase()) ||
+                name.includes(n.system) ||
+                name.includes(n.name.toLowerCase())
+              );
+            });
+            if (!match) return n;
+            const status = (["operational", "degraded", "failed"].includes(match.status)
+              ? match.status
+              : n.status) as Status;
+            return {
+              ...n,
+              status,
+              resilience:
+                typeof match.resilience === "number" ? match.resilience : n.resilience,
+              recovery: match.recovery ?? n.recovery,
+            };
+          }),
+        );
+      })
+      .catch((e) => active && setApiError(e?.message ?? "Network error"))
+      .finally(() => active && setApiLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
 
   const toSvgPoint = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
@@ -330,6 +375,10 @@ function GraphPage() {
           </div>
         </div>
       </div>
+
+      {apiLoading && <div className="mb-3"><LoadingState label="Fetching nodes from API…" /></div>}
+      {apiError && <div className="mb-3"><ErrorState message={apiError} /></div>}
+
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         {/* Graph canvas (desktop) */}
