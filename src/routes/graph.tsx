@@ -339,7 +339,10 @@ function GraphPage() {
               {f.label}
             </button>
           ))}
-        </div>
+      </div>
+
+      {apiLoading && <div className="mb-3"><LoadingState label="Fetching nodes from API…" /></div>}
+      {apiError && <div className="mb-3"><ErrorState message={apiError} /></div>}
 
         <div className="ml-auto flex items-center gap-2">
           <Button
