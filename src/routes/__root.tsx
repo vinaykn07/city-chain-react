@@ -1,7 +1,12 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
+import { SimulationBanner } from "@/components/SimulationBanner";
+import { MobileTabBar } from "@/components/MobileTabBar";
+import { PageTransition } from "@/components/PageTransition";
 
 import appCss from "../styles.css?url";
 
@@ -68,16 +73,25 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex min-h-screen flex-1 flex-col">
-          <TopBar />
-          <main className="flex-1 p-6 lg:p-8">
-            <Outlet />
-          </main>
+    <TooltipProvider delayDuration={150}>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <div className="hidden md:block">
+            <AppSidebar />
+          </div>
+          <div className="flex min-h-screen flex-1 flex-col">
+            <SimulationBanner />
+            <TopBar />
+            <main className="flex-1 p-4 pb-20 sm:p-6 md:pb-6 lg:p-8">
+              <PageTransition>
+                <Outlet />
+              </PageTransition>
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+        <MobileTabBar />
+        <Toaster position="top-right" richColors closeButton />
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }
