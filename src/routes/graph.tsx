@@ -502,7 +502,39 @@ function GraphPage() {
           </CardContent>
         </Card>
 
-        {/* Right panel */}
+        {/* Mobile simplified list view */}
+        <Card className="glass border-border/50 md:hidden">
+          <CardContent className="p-3">
+            <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+              Nodes ({nodes.filter((n) => visibleNodeIds.has(n.id)).length})
+            </p>
+            <ul className="space-y-1.5">
+              {nodes.filter((n) => visibleNodeIds.has(n.id)).map((n) => {
+                const meta = STATUS_META[n.status];
+                return (
+                  <li key={n.id}>
+                    <button
+                      onClick={() => setSelectedId(n.id)}
+                      className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors hover:bg-secondary/60 ${
+                        selectedId === n.id ? "border-primary/60 bg-primary/10" : "border-border/40 bg-card/40"
+                      }`}
+                    >
+                      <n.icon className="h-4 w-4" style={{ color: `var(--${n.accent})` }} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{n.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{n.code} · resilience {n.resilience.toFixed(2)}</p>
+                      </div>
+                      <span className={`flex items-center gap-1.5 text-[11px] ${meta.text}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${meta.dot} ${n.status === "failed" ? "pulse-dot" : ""}`} />
+                        {meta.label}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
         <Card className="glass border-border/50">
           <CardContent className="p-4">
             {!selected ? (
