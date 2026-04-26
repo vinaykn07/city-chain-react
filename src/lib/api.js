@@ -1,4 +1,4 @@
-const BASE_URL = ""https://urban-sim-backend-production.up.railway.app/api"";
+const BASE_URL = "https://urban-sim-backend-production.up.railway.app/api";
 
 export const api = {
   // NODES
