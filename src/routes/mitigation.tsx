@@ -402,7 +402,7 @@ function MitigationPage() {
             <Button
               variant="destructive"
               className="w-full gap-2"
-              onClick={() => { setPriorityActive((v) => { const nv = !v; if (nv) notify.mitigation("Emergency prioritization applied"); return nv; }); }}
+              onClick={() => { setPriorityActive((v) => { const nv = !v; if (nv) { notify.mitigation("Emergency prioritization applied"); api.mitigation.apply({ type: "emergency_priority", targetNodes: priorities }).catch((e) => notify.failure(`API error: ${e?.message ?? "unknown"}`)); } return nv; }); }}
             >
               <ShieldAlert className="h-4 w-4" />
               {priorityActive ? "Deactivate" : "Apply Prioritization"}
