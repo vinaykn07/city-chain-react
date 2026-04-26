@@ -178,4 +178,21 @@
     0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
     50% { box-shadow: 0 0 0 6px transparent; opacity: 0.7; }
   }
+
+  .node-fail-blink {
+    animation: node-fail-blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes node-fail-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+  .edge-flow {
+    animation: edge-dash 1.2s linear infinite;
+  }
+
+  @keyframes edge-dash {
+    to { stroke-dashoffset: -24; }
+  }
 }
