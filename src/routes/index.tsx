@@ -161,6 +161,61 @@ function ResilienceRing({ value }: { value: number }) {
 }
 
 function Dashboard() {
+  const [apiNodes, setApiNodes] = useState<any[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    api.nodes
+      .getAll()
+      .then((data) => {
+        if (!active) return;
+        setApiNodes(Array.isArray(data) ? data : data?.nodes ?? []);
+        setError(null);
+      })
+      .catch((e) => active && setError(e?.message ?? "Network error"))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const iconFor = (name: string) => {
+    const k = name.toLowerCase();
+    if (k.includes("power")) return Zap;
+    if (k.includes("transport")) return TrafficCone;
+    if (k.includes("water")) return Droplets;
+    if (k.includes("health")) return Heart;
+    if (k.includes("tele")) return Wifi;
+    if (k.includes("emerg")) return Siren;
+    return Activity;
+  };
+
+  const liveSystems =
+    apiNodes && apiNodes.length
+      ? apiNodes.map((n: any) => {
+          const status = (n.status ?? "operational") as StatusKey;
+          const health =
+            typeof n.health === "number"
+              ? n.health
+              : status === "operational"
+                ? 90
+                : status === "degraded"
+                  ? 55
+                  : 15;
+          return {
+            name: n.name ?? n.node_id ?? "Node",
+            icon: iconFor(n.name ?? ""),
+            status: (["operational", "degraded", "failed"].includes(status)
+              ? status
+              : "operational") as StatusKey,
+            health,
+          };
+        })
+      : systems;
+
   return (
     <div className="mx-auto max-w-7xl">
       <PageHeader
