@@ -310,10 +310,57 @@ function HistoryPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Sim | null>(null);
+  const [apiSims, setApiSims] = useState<Sim[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.simulations
+      .getAll()
+      .then((data) => {
+        if (!active) return;
+        const list: any[] = Array.isArray(data) ? data : (data?.simulations ?? []);
+        const mapped: Sim[] = list.map((r: any, i: number) => {
+          const triggerRaw = (r.trigger ?? r.triggerType ?? r.triggerSystem ?? "Power").toString();
+          const trigger = (
+            ["Power", "Transport", "Water", "Healthcare", "Telecom", "Emergency"].find((s) =>
+              triggerRaw.toLowerCase().includes(s.toLowerCase()),
+            ) ?? "Power"
+          ) as SystemKey;
+          return {
+            id: r.id ?? r.simulationId ?? `SIM-${String(i + 1).padStart(4, "0")}`,
+            scenario: r.scenarioName ?? r.scenario ?? "Untitled scenario",
+            trigger,
+            triggerNode: r.triggerNode ?? r.trigger_node ?? "—",
+            failedCount: r.failedCount ?? r.failed_nodes_count ?? (r.failedSystems?.length ?? 0),
+            failedSystems: (r.failedSystems ?? [trigger]) as SystemKey[],
+            mitigations: r.mitigations ?? r.mitigation ? (Array.isArray(r.mitigations) ? r.mitigations : [r.mitigation]) : [],
+            recovery: r.recovery ?? r.recoveryTime ?? "—",
+            date: new Date(r.date ?? r.createdAt ?? Date.now()),
+            cascade: Array.isArray(r.cascade) ? r.cascade : [1, 1, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0],
+            metrics: {
+              downtime: r.metrics?.downtime ?? r.downtime ?? "—",
+              responseDelay: r.metrics?.responseDelay ?? "—",
+              cascadeDepth: r.metrics?.cascadeDepth ?? r.cascadeDepth ?? 1,
+              resilience: r.metrics?.resilience ?? r.resilience ?? 70,
+            },
+          };
+        });
+        if (mapped.length) setApiSims(mapped);
+      })
+      .catch((e) => active && setError(e?.message ?? "Network error"))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const SOURCE: Sim[] = apiSims ?? SIMULATIONS;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return SIMULATIONS.filter((s) => {
+    return SOURCE.filter((s) => {
       if (systemFilter !== "all" && s.trigger !== systemFilter) return false;
       if (dateRange?.from && s.date < dateRange.from) return false;
       if (dateRange?.to) {
