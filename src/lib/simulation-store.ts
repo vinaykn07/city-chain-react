@@ -33,6 +33,9 @@ export const simStore = new SimStore();
 
 export function useSimulation() {
   const [, setTick] = useState(0);
-  useEffect(() => simStore.subscribe(() => setTick((t) => t + 1)), []);
+  useEffect(() => {
+    const unsub = simStore.subscribe(() => setTick((t) => t + 1));
+    return () => { unsub; };
+  }, []);
   return { active: simStore.active, scenario: simStore.scenario, start: simStore.start.bind(simStore), stop: simStore.stop.bind(simStore) };
 }
