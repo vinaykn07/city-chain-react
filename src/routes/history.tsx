@@ -374,7 +374,7 @@ function HistoryPage() {
       }
       return true;
     });
-  }, [search, systemFilter, dateRange]);
+  }, [search, systemFilter, dateRange, SOURCE]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
