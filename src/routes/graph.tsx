@@ -428,8 +428,10 @@ function GraphPage() {
                     <g
                       key={n.id}
                       transform={`translate(${n.x}, ${n.y})`}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedId(n.id)}
+                      className="cursor-grab active:cursor-grabbing"
+                      onPointerDown={(e) => onNodePointerDown(e, n)}
+                      onPointerMove={onNodePointerMove}
+                      onPointerUp={(e) => onNodePointerUp(e, n)}
                       style={{
                         opacity: isDegraded ? 0.85 : 1,
                         filter: isFailed
@@ -439,6 +441,7 @@ function GraphPage() {
                           : "none",
                       }}
                     >
+                      <title>{`${n.name} (${n.code}) — ${n.status} · resilience ${n.resilience.toFixed(2)} · recovery ${n.recovery}`}</title>
                       <circle
                         r="44"
                         fill="oklch(0.22 0.03 256)"
