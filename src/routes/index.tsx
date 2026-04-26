@@ -1,57 +1,161 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   Zap,
   Droplets,
   Wifi,
-  Bus,
-  AlertTriangle,
+  Heart,
+  Siren,
+  TrafficCone,
+  Clock,
   TrendingUp,
+  AlertTriangle,
   Activity,
+  ShieldAlert,
+  ShieldCheck,
+  FileBarChart,
 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Area,
-  AreaChart,
-} from "recharts";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Dashboard — UrbanSim" },
-      { name: "description", content: "Real-time overview of city infrastructure health, active simulations, and risk indicators." },
+      {
+        name: "description",
+        content:
+          "Live KPIs, infrastructure status, and recent cascade events for the Urban Infrastructure Failure Chain Simulator.",
+      },
     ],
   }),
   component: Dashboard,
 });
 
-const systems = [
-  { name: "Power Grid", icon: Zap, status: "operational", load: 72, color: "success" },
-  { name: "Water Network", icon: Droplets, status: "degraded", load: 88, color: "warning" },
-  { name: "Telecom", icon: Wifi, status: "operational", load: 54, color: "success" },
-  { name: "Transit", icon: Bus, status: "operational", load: 61, color: "success" },
+type StatusKey = "operational" | "degraded" | "failed";
+
+const statusMeta: Record<
+  StatusKey,
+  { label: string; dot: string; text: string; bar: string; ring: string }
+> = {
+  operational: {
+    label: "Operational",
+    dot: "bg-success",
+    text: "text-success",
+    bar: "bg-success",
+    ring: "border-success/40 bg-success/10",
+  },
+  degraded: {
+    label: "Degraded",
+    dot: "bg-warning",
+    text: "text-warning",
+    bar: "bg-warning",
+    ring: "border-warning/40 bg-warning/10",
+  },
+  failed: {
+    label: "Failed",
+    dot: "bg-destructive pulse-dot",
+    text: "text-destructive",
+    bar: "bg-destructive",
+    ring: "border-destructive/40 bg-destructive/10",
+  },
+};
+
+const systems: {
+  name: string;
+  icon: typeof Zap;
+  status: StatusKey;
+  health: number;
+}[] = [
+  { name: "Power Grid", icon: Zap, status: "operational", health: 92 },
+  { name: "Transportation Network", icon: TrafficCone, status: "degraded", health: 58 },
+  { name: "Water Supply", icon: Droplets, status: "operational", health: 88 },
+  { name: "Healthcare Services", icon: Heart, status: "failed", health: 14 },
+  { name: "Telecommunication", icon: Wifi, status: "operational", health: 81 },
+  { name: "Emergency Response", icon: Siren, status: "degraded", health: 47 },
 ];
 
-const trend = Array.from({ length: 24 }, (_, i) => ({
-  hour: `${i}:00`,
-  resilience: 70 + Math.sin(i / 3) * 15 + Math.random() * 5,
-  load: 50 + Math.cos(i / 4) * 20 + Math.random() * 8,
-}));
+type EventKind = "failure" | "mitigation" | "warning";
 
-const alerts = [
-  { level: "critical", text: "Substation 7B nearing capacity threshold", time: "2m ago" },
-  { level: "warning", text: "Water pressure anomaly in District 4", time: "14m ago" },
-  { level: "info", text: "Simulation #248 completed successfully", time: "1h ago" },
+const eventMeta: Record<EventKind, { border: string; bg: string; text: string; label: string }> = {
+  failure: {
+    border: "border-l-destructive",
+    bg: "bg-destructive/5",
+    text: "text-destructive",
+    label: "Failure",
+  },
+  mitigation: {
+    border: "border-l-success",
+    bg: "bg-success/5",
+    text: "text-success",
+    label: "Mitigation",
+  },
+  warning: {
+    border: "border-l-warning",
+    bg: "bg-warning/5",
+    text: "text-warning",
+    label: "Warning",
+  },
+};
+
+const events: { time: string; kind: EventKind; text: string }[] = [
+  {
+    time: "14:32",
+    kind: "failure",
+    text: "Healthcare failure triggered cascade to Emergency Response",
+  },
+  {
+    time: "14:31",
+    kind: "mitigation",
+    text: "Backup power deployed to Power Grid node PG-03",
+  },
+  {
+    time: "14:29",
+    kind: "warning",
+    text: "Transportation rerouting activated on Route B",
+  },
+  {
+    time: "14:25",
+    kind: "mitigation",
+    text: "Simulation started: Scenario #7 — Power Outage",
+  },
 ];
+
+function ResilienceRing({ value }: { value: number }) {
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  const offset = c - (value / 100) * c;
+  return (
+    <div className="relative h-16 w-16">
+      <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
+        <circle
+          cx="32"
+          cy="32"
+          r={r}
+          strokeWidth="6"
+          className="stroke-secondary"
+          fill="none"
+        />
+        <circle
+          cx="32"
+          cy="32"
+          r={r}
+          strokeWidth="6"
+          strokeLinecap="round"
+          className="stroke-primary transition-all"
+          fill="none"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-sm font-bold">
+        {value}%
+      </div>
+    </div>
+  );
+}
 
 function Dashboard() {
   return (
@@ -64,93 +168,149 @@ function Dashboard() {
 
       {/* KPI grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Network Resilience", value: "87%", trend: "+2.4%", icon: Activity, accent: "success" },
-          { label: "Active Nodes", value: "1,284", trend: "12 offline", icon: Zap, accent: "primary" },
-          { label: "Open Incidents", value: "3", trend: "1 critical", icon: AlertTriangle, accent: "destructive" },
-          { label: "Avg Recovery", value: "4.2m", trend: "-18%", icon: TrendingUp, accent: "warning" },
-        ].map((k) => (
-          <Card key={k.label} className="glass border-border/50">
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                    {k.label}
-                  </p>
-                  <p className="mt-2 text-3xl font-bold">{k.value}</p>
-                  <p className={`mt-1 text-xs text-${k.accent}`}>{k.trend}</p>
-                </div>
-                <div className={`rounded-lg bg-${k.accent}/15 border border-${k.accent}/30 p-2`}>
-                  <k.icon className={`h-5 w-5 text-${k.accent}`} />
-                </div>
+        <Card className="glass border-border/50">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Active Nodes
+                </p>
+                <p className="mt-2 text-3xl font-bold">24</p>
+                <p className="mt-1 flex items-center gap-1 text-xs text-success">
+                  <TrendingUp className="h-3 w-3" /> +2 since last hour
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="rounded-lg border border-success/30 bg-success/15 p-2">
+                <Activity className="h-5 w-5 text-success" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass border-border/50">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Failed Nodes
+                </p>
+                <p className="mt-2 text-3xl font-bold">3</p>
+                <Badge className="mt-2 border-transparent bg-destructive text-destructive-foreground hover:bg-destructive">
+                  Critical
+                </Badge>
+              </div>
+              <div className="rounded-lg border border-destructive/30 bg-destructive/15 p-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass border-border/50">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Avg Recovery Time
+                </p>
+                <p className="mt-2 text-3xl font-bold">14 min</p>
+                <p className="mt-1 text-xs text-muted-foreground">across last 24h</p>
+              </div>
+              <div className="rounded-lg border border-warning/30 bg-warning/15 p-2">
+                <Clock className="h-5 w-5 text-warning" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass border-border/50">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Resilience Score
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">System-wide</p>
+                <p className="mt-1 text-xs text-success">Stable</p>
+              </div>
+              <ResilienceRing value={72} />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Charts */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card className="glass lg:col-span-2 border-border/50">
+      {/* Two columns */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Card className="glass border-border/50">
           <CardHeader>
-            <CardTitle className="text-base">24-Hour Resilience Trend</CardTitle>
+            <CardTitle className="text-base">Infrastructure Status Overview</CardTitle>
           </CardHeader>
-          <CardContent className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend}>
-                <defs>
-                  <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.62 0.20 256)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="oklch(0.62 0.20 256)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="oklch(0.35 0.03 256 / 0.3)" strokeDasharray="3 3" />
-                <XAxis dataKey="hour" stroke="oklch(0.70 0.03 256)" fontSize={11} />
-                <YAxis stroke="oklch(0.70 0.03 256)" fontSize={11} />
-                <Tooltip
-                  contentStyle={{
-                    background: "oklch(0.22 0.03 256)",
-                    border: "1px solid oklch(0.35 0.03 256 / 0.5)",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="resilience"
-                  stroke="oklch(0.62 0.20 256)"
-                  strokeWidth={2}
-                  fill="url(#g1)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <CardContent className="space-y-3">
+            {systems.map((s) => {
+              const m = statusMeta[s.status];
+              const Icon = s.icon;
+              return (
+                <div
+                  key={s.name}
+                  className="flex items-center gap-3 rounded-lg border border-border/40 bg-card/40 p-3"
+                >
+                  <div className={`rounded-md border p-2 ${m.ring}`}>
+                    <Icon className={`h-4 w-4 ${m.text}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-sm font-medium">{s.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`h-2 w-2 rounded-full ${m.dot}`} />
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${m.text}`}>
+                          {m.label}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className={`h-full transition-all ${m.bar}`}
+                          style={{ width: `${s.health}%` }}
+                        />
+                      </div>
+                      <span className="w-9 text-right text-[11px] tabular-nums text-muted-foreground">
+                        {s.health}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
 
         <Card className="glass border-border/50">
           <CardHeader>
-            <CardTitle className="text-base">Active Alerts</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Recent Simulation Events</CardTitle>
+              <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-success">
+                <span className="h-2 w-2 rounded-full bg-success pulse-dot" /> Live
+              </span>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {alerts.map((a, i) => {
-              const color =
-                a.level === "critical"
-                  ? "destructive"
-                  : a.level === "warning"
-                  ? "warning"
-                  : "primary";
+          <CardContent className="space-y-2.5">
+            {events.map((e, i) => {
+              const m = eventMeta[e.kind];
               return (
                 <div
                   key={i}
-                  className={`rounded-lg border border-${color}/30 bg-${color}/5 p-3`}
+                  className={`rounded-md border-l-2 ${m.border} ${m.bg} p-3`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full bg-${color} pulse-dot`} />
-                    <span className={`text-[10px] uppercase tracking-wider text-${color} font-semibold`}>
-                      {a.level}
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      [{e.time}]
                     </span>
-                    <span className="ml-auto text-[10px] text-muted-foreground">{a.time}</span>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider ${m.text}`}>
+                      {m.label}
+                    </span>
                   </div>
-                  <p className="mt-1.5 text-sm">{a.text}</p>
+                  <p className="mt-1 text-sm leading-snug">{e.text}</p>
                 </div>
               );
             })}
@@ -158,36 +318,37 @@ function Dashboard() {
         </Card>
       </div>
 
-      {/* Systems */}
-      <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {systems.map((s) => (
-          <Card key={s.name} className="glass border-border/50">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div className={`rounded-lg bg-${s.color}/15 border border-${s.color}/30 p-2`}>
-                  <s.icon className={`h-5 w-5 text-${s.color}`} />
-                </div>
-                <Badge
-                  variant="outline"
-                  className={`border-${s.color}/40 text-${s.color} bg-${s.color}/10 capitalize`}
-                >
-                  {s.status}
-                </Badge>
-              </div>
-              <p className="mt-3 font-semibold">{s.name}</p>
-              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span>Load</span>
-                <span>{s.load}%</span>
-              </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
-                <div
-                  className={`h-full bg-${s.color} transition-all`}
-                  style={{ width: `${s.load}%` }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Quick Actions */}
+      <div className="mt-6">
+        <Card className="glass border-border/50">
+          <CardHeader>
+            <CardTitle className="text-base">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button
+              variant="destructive"
+              className="gap-2"
+              asChild
+            >
+              <Link to="/simulate">
+                <ShieldAlert className="h-4 w-4" />
+                Trigger New Failure
+              </Link>
+            </Button>
+            <Button className="gap-2" asChild>
+              <Link to="/mitigation">
+                <ShieldCheck className="h-4 w-4" />
+                Apply Mitigation
+              </Link>
+            </Button>
+            <Button variant="outline" className="gap-2" asChild>
+              <Link to="/analytics">
+                <FileBarChart className="h-4 w-4" />
+                View Full Report
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
