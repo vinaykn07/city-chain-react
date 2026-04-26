@@ -390,6 +390,8 @@ function SimulatePage() {
         if (tickRef.current) window.clearInterval(tickRef.current);
         tickRef.current = null;
         setRunning(false);
+        simStore.stop();
+        notify.mitigation("Simulation completed — results ready");
       }
     }, 1000);
   };
