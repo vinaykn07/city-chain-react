@@ -191,7 +191,7 @@ function AnalyticsPage() {
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">
                   Avg System Downtime
                 </p>
-                <p className="mt-2 text-3xl font-bold">22 <span className="text-lg font-medium text-muted-foreground">min</span></p>
+                <p className="mt-2 text-3xl font-bold">{avgDowntime} <span className="text-lg font-medium text-muted-foreground">min</span></p>
                 <p className="mt-1 flex items-center gap-1 text-xs text-success">
                   <TrendingDown className="h-3 w-3" /> -12% vs last month
                 </p>
