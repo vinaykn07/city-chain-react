@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -183,6 +183,45 @@ function GraphPage() {
   const [filter, setFilter] = useState<SystemKey | "all">("all");
   const [zoom, setZoom] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const dragRef = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
+
+  const toSvgPoint = (clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const p = pt.matrixTransform(ctm.inverse());
+    return { x: p.x, y: p.y };
+  };
+
+  const onNodePointerDown = (e: React.PointerEvent<SVGGElement>, n: GraphNode) => {
+    e.stopPropagation();
+    (e.currentTarget as SVGGElement).setPointerCapture(e.pointerId);
+    const p = toSvgPoint(e.clientX, e.clientY);
+    dragRef.current = { id: n.id, offsetX: p.x - n.x, offsetY: p.y - n.y };
+  };
+
+  const onNodePointerMove = (e: React.PointerEvent<SVGGElement>) => {
+    if (!dragRef.current) return;
+    const p = toSvgPoint(e.clientX, e.clientY);
+    const { id, offsetX, offsetY } = dragRef.current;
+    const nx = Math.max(50, Math.min(950, p.x - offsetX));
+    const ny = Math.max(50, Math.min(550, p.y - offsetY));
+    setNodes((prev) => prev.map((nn) => (nn.id === id ? { ...nn, x: nx, y: ny } : nn)));
+  };
+
+  const onNodePointerUp = (e: React.PointerEvent<SVGGElement>, n: GraphNode) => {
+    const wasDrag = dragRef.current && (Math.abs(n.x - (NODES.find(o => o.id === n.id)?.x ?? n.x)) > 0.1);
+    dragRef.current = null;
+    try { (e.currentTarget as SVGGElement).releasePointerCapture(e.pointerId); } catch {}
+    // treat as click if pointer barely moved — use simple selection regardless
+    if (!wasDrag) setSelectedId(n.id);
+  };
+
 
   const selected = useMemo(
     () => nodes.find((n) => n.id === selectedId) ?? null,
