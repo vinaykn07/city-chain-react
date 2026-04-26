@@ -332,8 +332,8 @@ function GraphPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        {/* Graph canvas */}
-        <Card className="glass relative overflow-hidden border-border/50">
+        {/* Graph canvas (desktop) */}
+        <Card className="glass relative hidden overflow-hidden border-border/50 md:block">
           <CardContent className="p-0">
             <div className="relative h-[560px] w-full overflow-hidden">
               <svg
