@@ -129,6 +129,26 @@ const PAGE_SIZE = 6;
 function AnalyticsPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [summary, setSummary] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.simulations
+      .getSummary()
+      .then((d) => active && setSummary(d ?? null))
+      .catch((e) => active && setError(e?.message ?? "Network error"))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const avgDowntime = summary?.avgDowntime ?? summary?.averageDowntime ?? 22;
+  const avgRecovery = summary?.avgRecovery ?? summary?.averageRecovery ?? 14;
+  const avgResilience = summary?.avgResilience ?? summary?.averageResilience ?? null;
+
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
