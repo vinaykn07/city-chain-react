@@ -1,12 +1,7 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
-import { SimulationBanner } from "@/components/SimulationBanner";
-import { MobileTabBar } from "@/components/MobileTabBar";
-import { PageTransition } from "@/components/PageTransition";
 
 import appCss from "../styles.css?url";
 
@@ -41,6 +36,15 @@ export const Route = createRootRoute({
         content:
           "Simulate cascading infrastructure failures across smart city networks and test mitigation strategies.",
       },
+      { property: "og:title", content: "UrbanSim — Urban Infrastructure Failure Chain Simulator" },
+      { name: "twitter:title", content: "UrbanSim — Urban Infrastructure Failure Chain Simulator" },
+      { name: "description", content: "UrbanSim simulates urban infrastructure failures and their cascading effects in smart cities." },
+      { property: "og:description", content: "UrbanSim simulates urban infrastructure failures and their cascading effects in smart cities." },
+      { name: "twitter:description", content: "UrbanSim simulates urban infrastructure failures and their cascading effects in smart cities." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e2678f03-eb88-4cc4-aaf8-6a7b1750974c/id-preview-26429268--e73305f5-6df6-465a-a4b6-5b535171d6a4.lovable.app-1777226774500.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e2678f03-eb88-4cc4-aaf8-6a7b1750974c/id-preview-26429268--e73305f5-6df6-465a-a4b6-5b535171d6a4.lovable.app-1777226774500.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -73,25 +77,16 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   return (
-    <TooltipProvider delayDuration={150}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <div className="hidden md:block">
-            <AppSidebar />
-          </div>
-          <div className="flex min-h-screen flex-1 flex-col">
-            <SimulationBanner />
-            <TopBar />
-            <main className="flex-1 p-4 pb-20 sm:p-6 md:pb-6 lg:p-8">
-              <PageTransition>
-                <Outlet />
-              </PageTransition>
-            </main>
-          </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <div className="flex min-h-screen flex-1 flex-col">
+          <TopBar />
+          <main className="flex-1 p-6 lg:p-8">
+            <Outlet />
+          </main>
         </div>
-        <MobileTabBar />
-        <Toaster position="top-right" richColors closeButton />
-      </SidebarProvider>
-    </TooltipProvider>
+      </div>
+    </SidebarProvider>
   );
 }
