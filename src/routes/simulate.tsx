@@ -262,11 +262,42 @@ function SimulatePage() {
     simStore.stop();
   };
 
-  const startSim = () => {
+  const startSim = async () => {
     resetSimState();
     setRunning(true);
+    setApiError(null);
+    setApiLoading(true);
     simStore.start(`Origin: ${originSystem}`);
     notify.failure(`${originSystem} ${originComponent}`);
+
+    // Fire backend simulation
+    try {
+      const scenarioName =
+        SCENARIOS.find(
+          (s) => s.origin === originSystem && s.component === originComponent,
+        )?.title ?? `${originSystem} failure`;
+      const resp = await api.simulations.run({
+        scenarioName,
+        triggerNode: originComponent,
+        failureIntensity: INTENSITY[intensity].label,
+      });
+      const cascade: any[] =
+        resp?.cascade ?? resp?.cascadeLog ?? resp?.log ?? [];
+      if (Array.isArray(cascade) && cascade.length) {
+        setLogs((l) => [
+          ...l,
+          ...cascade.map((c: any, i: number) => ({
+            t: typeof c.t === "number" ? c.t : i,
+            kind: (c.kind ?? "info") as LogKind,
+            text: typeof c === "string" ? c : (c.text ?? c.message ?? JSON.stringify(c)),
+          })),
+        ]);
+      }
+    } catch (e: any) {
+      setApiError(e?.message ?? "Network error");
+    } finally {
+      setApiLoading(false);
+    }
 
     const propagationOrder: SystemKey[] = (() => {
       const order: SystemKey[] = [originSystem];
