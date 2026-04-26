@@ -223,7 +223,7 @@ function MitigationPage() {
 
             <Button
               className="w-full gap-2"
-              onClick={() => { setPowerActive((v) => { const nv = !v; if (nv) notify.mitigation("Backup power deployed"); return nv; }); }}
+              onClick={() => { setPowerActive((v) => { const nv = !v; if (nv) { notify.mitigation("Backup power deployed"); api.mitigation.apply({ type: "backup_power", targetNodes: powerTargets }).catch((e) => notify.failure(`API error: ${e?.message ?? "unknown"}`)); } return nv; }); }}
             >
               <BatteryCharging className="h-4 w-4" />
               {powerActive ? "Deactivate" : "Deploy Now"}
