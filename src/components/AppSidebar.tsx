@@ -12,6 +12,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -21,6 +22,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { SystemHealthWidget } from "@/components/SystemHealthWidget";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -94,6 +96,9 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border p-0">
+        <SystemHealthWidget />
+      </SidebarFooter>
     </Sidebar>
   );
 }

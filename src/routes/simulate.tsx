@@ -27,6 +27,8 @@ import {
   PlayCircle,
   type LucideIcon,
 } from "lucide-react";
+import { simStore } from "@/lib/simulation-store";
+import { notify } from "@/lib/notify";
 
 export const Route = createFileRoute("/simulate")({
   head: () => ({
@@ -254,11 +256,14 @@ function SimulatePage() {
     tickRef.current = null;
     setRunning(false);
     setPropagating(null);
+    simStore.stop();
   };
 
   const startSim = () => {
     resetSimState();
     setRunning(true);
+    simStore.start(`Origin: ${originSystem}`);
+    notify.failure(`${originSystem} ${originComponent}`);
 
     const propagationOrder: SystemKey[] = (() => {
       const order: SystemKey[] = [originSystem];
@@ -385,6 +390,8 @@ function SimulatePage() {
         if (tickRef.current) window.clearInterval(tickRef.current);
         tickRef.current = null;
         setRunning(false);
+        simStore.stop();
+        notify.mitigation("Simulation completed — results ready");
       }
     }, 1000);
   };

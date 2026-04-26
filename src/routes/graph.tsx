@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -183,6 +183,45 @@ function GraphPage() {
   const [filter, setFilter] = useState<SystemKey | "all">("all");
   const [zoom, setZoom] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const dragRef = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
+
+  const toSvgPoint = (clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const p = pt.matrixTransform(ctm.inverse());
+    return { x: p.x, y: p.y };
+  };
+
+  const onNodePointerDown = (e: React.PointerEvent<SVGGElement>, n: GraphNode) => {
+    e.stopPropagation();
+    (e.currentTarget as SVGGElement).setPointerCapture(e.pointerId);
+    const p = toSvgPoint(e.clientX, e.clientY);
+    dragRef.current = { id: n.id, offsetX: p.x - n.x, offsetY: p.y - n.y };
+  };
+
+  const onNodePointerMove = (e: React.PointerEvent<SVGGElement>) => {
+    if (!dragRef.current) return;
+    const p = toSvgPoint(e.clientX, e.clientY);
+    const { id, offsetX, offsetY } = dragRef.current;
+    const nx = Math.max(50, Math.min(950, p.x - offsetX));
+    const ny = Math.max(50, Math.min(550, p.y - offsetY));
+    setNodes((prev) => prev.map((nn) => (nn.id === id ? { ...nn, x: nx, y: ny } : nn)));
+  };
+
+  const onNodePointerUp = (e: React.PointerEvent<SVGGElement>, n: GraphNode) => {
+    const wasDrag = dragRef.current && (Math.abs(n.x - (NODES.find(o => o.id === n.id)?.x ?? n.x)) > 0.1);
+    dragRef.current = null;
+    try { (e.currentTarget as SVGGElement).releasePointerCapture(e.pointerId); } catch {}
+    // treat as click if pointer barely moved — use simple selection regardless
+    if (!wasDrag) setSelectedId(n.id);
+  };
+
 
   const selected = useMemo(
     () => nodes.find((n) => n.id === selectedId) ?? null,
@@ -293,13 +332,14 @@ function GraphPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        {/* Graph canvas */}
-        <Card className="glass relative overflow-hidden border-border/50">
+        {/* Graph canvas (desktop) */}
+        <Card className="glass relative hidden overflow-hidden border-border/50 md:block">
           <CardContent className="p-0">
             <div className="relative h-[560px] w-full overflow-hidden">
               <svg
+                ref={svgRef}
                 viewBox="0 0 1000 600"
-                className="h-full w-full"
+                className="h-full w-full touch-none"
                 style={{
                   transform: `scale(${zoom})`,
                   transformOrigin: "center center",
@@ -388,8 +428,10 @@ function GraphPage() {
                     <g
                       key={n.id}
                       transform={`translate(${n.x}, ${n.y})`}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedId(n.id)}
+                      className="cursor-grab active:cursor-grabbing"
+                      onPointerDown={(e) => onNodePointerDown(e, n)}
+                      onPointerMove={onNodePointerMove}
+                      onPointerUp={(e) => onNodePointerUp(e, n)}
                       style={{
                         opacity: isDegraded ? 0.85 : 1,
                         filter: isFailed
@@ -399,6 +441,7 @@ function GraphPage() {
                           : "none",
                       }}
                     >
+                      <title>{`${n.name} (${n.code}) — ${n.status} · resilience ${n.resilience.toFixed(2)} · recovery ${n.recovery}`}</title>
                       <circle
                         r="44"
                         fill="oklch(0.22 0.03 256)"
@@ -459,7 +502,39 @@ function GraphPage() {
           </CardContent>
         </Card>
 
-        {/* Right panel */}
+        {/* Mobile simplified list view */}
+        <Card className="glass border-border/50 md:hidden">
+          <CardContent className="p-3">
+            <p className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+              Nodes ({nodes.filter((n) => visibleNodeIds.has(n.id)).length})
+            </p>
+            <ul className="space-y-1.5">
+              {nodes.filter((n) => visibleNodeIds.has(n.id)).map((n) => {
+                const meta = STATUS_META[n.status];
+                return (
+                  <li key={n.id}>
+                    <button
+                      onClick={() => setSelectedId(n.id)}
+                      className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors hover:bg-secondary/60 ${
+                        selectedId === n.id ? "border-primary/60 bg-primary/10" : "border-border/40 bg-card/40"
+                      }`}
+                    >
+                      <n.icon className="h-4 w-4" style={{ color: `var(--${n.accent})` }} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{n.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{n.code} · resilience {n.resilience.toFixed(2)}</p>
+                      </div>
+                      <span className={`flex items-center gap-1.5 text-[11px] ${meta.text}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${meta.dot} ${n.status === "failed" ? "pulse-dot" : ""}`} />
+                        {meta.label}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
         <Card className="glass border-border/50">
           <CardContent className="p-4">
             {!selected ? (
