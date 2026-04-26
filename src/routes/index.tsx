@@ -304,7 +304,9 @@ function Dashboard() {
             <CardTitle className="text-base">Infrastructure Status Overview</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {systems.map((s) => {
+            {loading && <LoadingState label="Fetching infrastructure nodes…" />}
+            {error && <ErrorState message={error} />}
+            {liveSystems.map((s) => {
               const m = statusMeta[s.status];
               const Icon = s.icon;
               return (
