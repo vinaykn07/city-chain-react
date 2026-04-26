@@ -313,7 +313,7 @@ function MitigationPage() {
             <Button
               className="w-full gap-2 text-white hover:opacity-90"
               style={{ backgroundColor: "oklch(0.62 0.22 305)" }}
-              onClick={() => { setRerouteActive((v) => { const nv = !v; if (nv) notify.mitigation("Traffic rerouting activated"); return nv; }); }}
+              onClick={() => { setRerouteActive((v) => { const nv = !v; if (nv) { notify.mitigation("Traffic rerouting activated"); api.mitigation.apply({ type: "traffic_reroute", targetNodes: [route] }).catch((e) => notify.failure(`API error: ${e?.message ?? "unknown"}`)); } return nv; }); }}
             >
               <RouteIcon className="h-4 w-4" />
               {rerouteActive ? "Deactivate" : "Activate Rerouting"}
