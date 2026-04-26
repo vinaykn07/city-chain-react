@@ -205,6 +205,8 @@ function SimulatePage() {
   });
   const [propagating, setPropagating] = useState<SystemKey | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiLoading, setApiLoading] = useState(false);
   const tickRef = useRef<number | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
