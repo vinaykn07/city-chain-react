@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { simStore } from "@/lib/simulation-store";
 import { notify } from "@/lib/notify";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/simulate")({
   head: () => ({
