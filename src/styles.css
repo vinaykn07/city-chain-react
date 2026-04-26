@@ -103,6 +103,14 @@
   --sidebar-border: oklch(0.32 0.03 256 / 0.5);
   --sidebar-ring: oklch(0.62 0.20 256);
 
+  /* Node accent colors for graph */
+  --node-power: oklch(0.65 0.20 250);      /* electric blue */
+  --node-transport: oklch(0.62 0.22 305);  /* purple */
+  --node-water: oklch(0.75 0.16 210);      /* cyan */
+  --node-health: oklch(0.72 0.20 350);     /* pink */
+  --node-telecom: oklch(0.72 0.18 55);     /* orange */
+  --node-emergency: oklch(0.65 0.22 25);   /* red */
+
   /* Gradients & shadows */
   --gradient-primary: linear-gradient(135deg, oklch(0.62 0.20 256), oklch(0.72 0.18 250));
   --gradient-bg: radial-gradient(ellipse at top, oklch(0.24 0.05 256) 0%, oklch(0.16 0.03 256) 60%);
