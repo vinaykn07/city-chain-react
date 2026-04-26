@@ -827,7 +827,9 @@ function SimulatePage() {
                 {logs.length} events
               </Badge>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
+              {apiLoading && <div className="text-[11px] text-muted-foreground">Calling /api/simulations…</div>}
+              {apiError && <div className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">API error: {apiError}</div>}
               <div className="h-[220px] overflow-auto rounded-md border border-border/40 bg-[oklch(0.12_0.02_256)] p-3 font-mono text-xs">
                 {logs.length === 0 ? (
                   <p className="text-muted-foreground">
