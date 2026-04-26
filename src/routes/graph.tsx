@@ -337,8 +337,9 @@ function GraphPage() {
           <CardContent className="p-0">
             <div className="relative h-[560px] w-full overflow-hidden">
               <svg
+                ref={svgRef}
                 viewBox="0 0 1000 600"
-                className="h-full w-full"
+                className="h-full w-full touch-none"
                 style={{
                   transform: `scale(${zoom})`,
                   transformOrigin: "center center",
