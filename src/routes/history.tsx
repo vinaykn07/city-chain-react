@@ -431,6 +431,9 @@ function HistoryPage() {
         }
       />
 
+      {loading && <div className="mb-4"><LoadingState label="Fetching simulation history…" /></div>}
+      {error && <div className="mb-4"><ErrorState message={error} /></div>}
+
       {/* Summary chips */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Badge variant="outline" className="gap-1.5 border-border/60 bg-card/40 px-3 py-1.5 text-xs">
