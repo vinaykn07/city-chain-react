@@ -376,6 +376,10 @@ function GraphPage() {
         </div>
       </div>
 
+      {apiLoading && <div className="mb-3"><LoadingState label="Fetching nodes from API…" /></div>}
+      {apiError && <div className="mb-3"><ErrorState message={apiError} /></div>}
+
+
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         {/* Graph canvas (desktop) */}
         <Card className="glass relative hidden overflow-hidden border-border/50 md:block">
