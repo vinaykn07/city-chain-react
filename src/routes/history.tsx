@@ -381,24 +381,23 @@ function HistoryPage() {
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const stats = useMemo(() => {
-    const total = SIMULATIONS.length;
+    const total = SOURCE.length;
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    const thisWeek = SIMULATIONS.filter((s) => {
-      // Count "this week" relative to most recent simulation date
+    const thisWeek = SOURCE.filter((s) => {
       const ref = new Date("2026-04-25");
       const cutoff = new Date(ref);
       cutoff.setDate(ref.getDate() - 7);
       return s.date >= cutoff;
     }).length;
-    const avgRes = Math.round(
-      SIMULATIONS.reduce((a, s) => a + s.metrics.resilience, 0) / total,
-    );
+    const avgRes = total
+      ? Math.round(SOURCE.reduce((a, s) => a + s.metrics.resilience, 0) / total)
+      : 0;
     return { total, thisWeek, avgRes };
-  }, []);
+  }, [SOURCE]);
 
   const exportAll = () => {
-    const blob = new Blob([JSON.stringify(SIMULATIONS, null, 2)], {
+    const blob = new Blob([JSON.stringify(SOURCE, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
