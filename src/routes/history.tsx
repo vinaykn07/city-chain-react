@@ -313,46 +313,61 @@ function HistoryPage() {
   const [apiSims, setApiSims] = useState<Sim[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     let active = true;
-    api.simulations
-      .getAll()
-      .then((data) => {
+    let isFirst = true;
+
+    const fetchSims = async () => {
+      try {
+        const data = await api.simulations.getAll();
         if (!active) return;
-        const list: any[] = Array.isArray(data) ? data : (data?.simulations ?? []);
+        const list: any[] = Array.isArray(data) ? data : (data?.data ?? data?.simulations ?? []);
         const mapped: Sim[] = list.map((r: any, i: number) => {
-          const triggerRaw = (r.trigger ?? r.triggerType ?? r.triggerSystem ?? "Power").toString();
+          const triggerRaw = (r.trigger ?? r.triggerType ?? r.triggerSystem ?? r.triggerNode ?? "Power").toString();
           const trigger = (
             ["Power", "Transport", "Water", "Healthcare", "Telecom", "Emergency"].find((s) =>
               triggerRaw.toLowerCase().includes(s.toLowerCase()),
             ) ?? "Power"
           ) as SystemKey;
           return {
-            id: r.id ?? r.simulationId ?? `SIM-${String(i + 1).padStart(4, "0")}`,
+            id: r.id ?? r._id ?? r.simulationId ?? `SIM-${String(i + 1).padStart(4, "0")}`,
             scenario: r.scenarioName ?? r.scenario ?? "Untitled scenario",
             trigger,
             triggerNode: r.triggerNode ?? r.trigger_node ?? "—",
-            failedCount: r.failedCount ?? r.failed_nodes_count ?? (r.failedSystems?.length ?? 0),
+            failedCount: r.failedCount ?? r.failed_nodes_count ?? (r.failedNodes?.length ?? r.failedSystems?.length ?? 0),
             failedSystems: (r.failedSystems ?? [trigger]) as SystemKey[],
-            mitigations: r.mitigations ?? r.mitigation ? (Array.isArray(r.mitigations) ? r.mitigations : [r.mitigation]) : [],
-            recovery: r.recovery ?? r.recoveryTime ?? "—",
+            mitigations: Array.isArray(r.mitigations) ? r.mitigations : r.mitigation ? [r.mitigation] : [],
+            recovery: r.recovery ?? (r.recoveryTime != null ? `${r.recoveryTime} min` : "—"),
             date: new Date(r.date ?? r.createdAt ?? Date.now()),
             cascade: Array.isArray(r.cascade) ? r.cascade : [1, 1, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0],
             metrics: {
-              downtime: r.metrics?.downtime ?? r.downtime ?? "—",
+              downtime: r.metrics?.downtime ?? (r.downtime != null ? `${r.downtime} min` : "—"),
               responseDelay: r.metrics?.responseDelay ?? "—",
               cascadeDepth: r.metrics?.cascadeDepth ?? r.cascadeDepth ?? 1,
-              resilience: r.metrics?.resilience ?? r.resilience ?? 70,
+              resilience: r.metrics?.resilience ?? r.resilience ?? r.resilienceScore ?? 70,
             },
           };
         });
-        if (mapped.length) setApiSims(mapped);
-      })
-      .catch((e) => active && setError(e?.message ?? "Network error"))
-      .finally(() => active && setLoading(false));
+        setApiSims(mapped);
+        setLastUpdated(new Date());
+        setError(null);
+      } catch (e: any) {
+        if (active && isFirst) setError(e?.message ?? "Network error");
+      } finally {
+        if (active && isFirst) {
+          setLoading(false);
+          isFirst = false;
+        }
+      }
+    };
+
+    fetchSims();
+    const id = setInterval(fetchSims, 5000);
     return () => {
       active = false;
+      clearInterval(id);
     };
   }, []);
 
@@ -448,6 +463,13 @@ function HistoryPage() {
           <span className="text-muted-foreground">Avg Resilience:</span>
           <span className="font-semibold tabular-nums text-success">{stats.avgRes}%</span>
         </Badge>
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+          </span>
+          Live{lastUpdated ? ` · ${lastUpdated.toLocaleTimeString()}` : ""}
+        </div>
       </div>
 
       {/* Filter bar */}
