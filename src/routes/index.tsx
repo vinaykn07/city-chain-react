@@ -164,21 +164,36 @@ function Dashboard() {
   const [apiNodes, setApiNodes] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    api.nodes
-      .getAll()
-      .then((data) => {
-        if (!active) return;
-        setApiNodes(Array.isArray(data) ? data : data?.nodes ?? []);
-        setError(null);
-      })
-      .catch((e) => active && setError(e?.message ?? "Network error"))
-      .finally(() => active && setLoading(false));
+    let isFirst = true;
+
+    const fetchNodes = () => {
+      if (isFirst) setLoading(true);
+      api.nodes
+        .getAll()
+        .then((data) => {
+          if (!active) return;
+          setApiNodes(Array.isArray(data) ? data : data?.nodes ?? []);
+          setError(null);
+          setLastUpdated(new Date());
+        })
+        .catch((e) => active && setError(e?.message ?? "Network error"))
+        .finally(() => {
+          if (active && isFirst) {
+            setLoading(false);
+            isFirst = false;
+          }
+        });
+    };
+
+    fetchNodes();
+    const id = setInterval(fetchNodes, 5000);
     return () => {
       active = false;
+      clearInterval(id);
     };
   }, []);
 
