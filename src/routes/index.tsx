@@ -164,21 +164,36 @@ function Dashboard() {
   const [apiNodes, setApiNodes] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    api.nodes
-      .getAll()
-      .then((data) => {
-        if (!active) return;
-        setApiNodes(Array.isArray(data) ? data : data?.nodes ?? []);
-        setError(null);
-      })
-      .catch((e) => active && setError(e?.message ?? "Network error"))
-      .finally(() => active && setLoading(false));
+    let isFirst = true;
+
+    const fetchNodes = () => {
+      if (isFirst) setLoading(true);
+      api.nodes
+        .getAll()
+        .then((data) => {
+          if (!active) return;
+          setApiNodes(Array.isArray(data) ? data : data?.nodes ?? []);
+          setError(null);
+          setLastUpdated(new Date());
+        })
+        .catch((e) => active && setError(e?.message ?? "Network error"))
+        .finally(() => {
+          if (active && isFirst) {
+            setLoading(false);
+            isFirst = false;
+          }
+        });
+    };
+
+    fetchNodes();
+    const id = setInterval(fetchNodes, 5000);
     return () => {
       active = false;
+      clearInterval(id);
     };
   }, []);
 
@@ -301,7 +316,13 @@ function Dashboard() {
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card className="glass border-border/50">
           <CardHeader>
-            <CardTitle className="text-base">Infrastructure Status Overview</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Infrastructure Status Overview</CardTitle>
+              <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-success">
+                <span className="h-2 w-2 rounded-full bg-success pulse-dot" />
+                {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Live"}
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading && <LoadingState label="Fetching infrastructure nodes…" />}
