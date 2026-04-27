@@ -463,6 +463,13 @@ function HistoryPage() {
           <span className="text-muted-foreground">Avg Resilience:</span>
           <span className="font-semibold tabular-nums text-success">{stats.avgRes}%</span>
         </Badge>
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+          </span>
+          Live{lastUpdated ? ` · ${lastUpdated.toLocaleTimeString()}` : ""}
+        </div>
       </div>
 
       {/* Filter bar */}
