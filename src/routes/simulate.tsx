@@ -279,7 +279,7 @@ function SimulatePage() {
       const resp = await api.simulations.run({
         scenarioName,
         triggerNode: originComponent,
-        failureIntensity: INTENSITY[intensity].label,
+        failureIntensity: INTENSITY[intensity].label.toLowerCase(),
       });
       const cascade: any[] =
         resp?.cascade ?? resp?.cascadeLog ?? resp?.log ?? [];
