@@ -316,7 +316,13 @@ function Dashboard() {
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card className="glass border-border/50">
           <CardHeader>
-            <CardTitle className="text-base">Infrastructure Status Overview</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Infrastructure Status Overview</CardTitle>
+              <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-success">
+                <span className="h-2 w-2 rounded-full bg-success pulse-dot" />
+                {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Live"}
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading && <LoadingState label="Fetching infrastructure nodes…" />}
