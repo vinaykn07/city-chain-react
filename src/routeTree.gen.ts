@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SimulateRouteImport } from './routes/simulate'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as MitigationRouteImport } from './routes/mitigation'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -30,6 +31,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const MitigationRoute = MitigationRouteImport.update({
   id: '/mitigation',
   path: '/mitigation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/graph': typeof GraphRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/mitigation': typeof MitigationRoute
   '/settings': typeof SettingsRoute
   '/simulate': typeof SimulateRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/graph': typeof GraphRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/mitigation': typeof MitigationRoute
   '/settings': typeof SettingsRoute
   '/simulate': typeof SimulateRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/graph': typeof GraphRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/mitigation': typeof MitigationRoute
   '/settings': typeof SettingsRoute
   '/simulate': typeof SimulateRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/graph'
     | '/history'
+    | '/login'
     | '/mitigation'
     | '/settings'
     | '/simulate'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/graph'
     | '/history'
+    | '/login'
     | '/mitigation'
     | '/settings'
     | '/simulate'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/graph'
     | '/history'
+    | '/login'
     | '/mitigation'
     | '/settings'
     | '/simulate'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   GraphRoute: typeof GraphRoute
   HistoryRoute: typeof HistoryRoute
+  LoginRoute: typeof LoginRoute
   MitigationRoute: typeof MitigationRoute
   SettingsRoute: typeof SettingsRoute
   SimulateRoute: typeof SimulateRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/mitigation'
       fullPath: '/mitigation'
       preLoaderRoute: typeof MitigationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history': {
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   GraphRoute: GraphRoute,
   HistoryRoute: HistoryRoute,
+  LoginRoute: LoginRoute,
   MitigationRoute: MitigationRoute,
   SettingsRoute: SettingsRoute,
   SimulateRoute: SimulateRoute,
