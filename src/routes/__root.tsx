@@ -1,7 +1,18 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+  Navigate,
+  useLocation,
+} from "@tanstack/react-router";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
+import { AuthProvider } from "@/providers/AuthProvider";
+import { useAuth } from "@/lib/auth";
+import { Loader2, Grid3x3 } from "lucide-react";
 
 import appCss from "../styles.css?url";
 
@@ -76,6 +87,43 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  return (
+    <AuthProvider>
+      <AuthGuard />
+    </AuthProvider>
+  );
+}
+
+function AuthGuard() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const { pathname } = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-glow shadow-[var(--shadow-glow)]">
+            <Grid3x3 className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading UrbanSim…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated && pathname !== "/login") {
+    return <Navigate to="/login" />;
+  }
+
+  if (isAuthenticated && pathname === "/login") {
+    return <Navigate to="/" />;
+  }
+
+  if (pathname === "/login") {
+    return <Outlet />;
+  }
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
