@@ -293,6 +293,10 @@ function SimulatePage() {
           })),
         ]);
       }
+      // Broadcast: history & analytics pages refresh immediately
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("urbansim:simulation-created"));
+      }
     } catch (e: any) {
       setApiError(e?.message ?? "Network error");
     } finally {

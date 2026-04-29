@@ -365,9 +365,16 @@ function HistoryPage() {
 
     fetchSims();
     const id = setInterval(fetchSims, 5000);
+    const onCreated = () => fetchSims();
+    if (typeof window !== "undefined") {
+      window.addEventListener("urbansim:simulation-created", onCreated);
+    }
     return () => {
       active = false;
       clearInterval(id);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("urbansim:simulation-created", onCreated);
+      }
     };
   }, []);
 

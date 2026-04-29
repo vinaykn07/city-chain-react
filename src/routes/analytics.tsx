@@ -67,62 +67,35 @@ const SYSTEM_COLORS: Record<string, string> = {
   Emergency: "oklch(0.65 0.22 25)",
 };
 
-const failureFreq = [
-  { system: "Power", failures: 18 },
-  { system: "Transport", failures: 12 },
-  { system: "Water", failures: 7 },
-  { system: "Healthcare", failures: 14 },
-  { system: "Telecom", failures: 9 },
-  { system: "Emergency", failures: 16 },
-];
+const SYSTEM_KEYS = ["Power", "Transport", "Water", "Healthcare", "Telecom", "Emergency"] as const;
+type Sys = typeof SYSTEM_KEYS[number];
 
-const timeline = Array.from({ length: 30 }, (_, i) => ({
-  t: i,
-  affected: Math.max(
-    0,
-    Math.round(
-      4 + Math.sin(i / 3) * 4 + (i > 8 && i < 22 ? 6 : 0) + Math.random() * 1.5,
-    ),
-  ),
-}));
+function inferSystem(s: string): Sys {
+  const v = (s ?? "").toString().toLowerCase();
+  return (SYSTEM_KEYS.find((k) => v.includes(k.toLowerCase())) ?? "Power") as Sys;
+}
 
-const resilience = [
-  { system: "Power Grid", score: 85 },
-  { system: "Transportation", score: 72 },
-  { system: "Water Supply", score: 90 },
-  { system: "Healthcare", score: 65 },
-  { system: "Telecom", score: 78 },
-  { system: "Emergency", score: 60 },
-];
+const FALLBACK_FAILURE_FREQ = SYSTEM_KEYS.map((s) => ({ system: s, failures: 0 }));
+const FALLBACK_TIMELINE = Array.from({ length: 12 }, (_, i) => ({ t: i, affected: 0 }));
+const FALLBACK_RESILIENCE = SYSTEM_KEYS.map((s) => ({ system: s, score: 0 }));
 const resilienceColor = (s: number) =>
   s > 75 ? "oklch(0.72 0.18 145)" : s >= 50 ? "oklch(0.78 0.16 75)" : "oklch(0.65 0.22 25)";
 
 // Heatmap: rows = source of failure, cols = affected system. Values 0..100.
 const HEATMAP_SYSTEMS = ["Power", "Transport", "Water", "Healthcare", "Telecom", "Emergency"];
-const heatmap: number[][] = [
-  // Power affects:           P    T    W    H    Tc   E
-  /* Power      */           [0,  85,  78,  82,  74,  80],
-  /* Transport  */           [5,  0,   12,  35,  8,   62],
-  /* Water      */           [3,  18,  0,   55,  6,   28],
-  /* Healthcare */           [2,  6,   8,   0,   4,   45],
-  /* Telecom    */           [4,  22,  10,  68,  0,   72],
-  /* Emergency  */           [1,  10,  4,   30,  6,   0],
-];
 
-const history = [
-  { id: "SIM-0248", scenario: "Northeast Blackout", trigger: "PG-01", failed: 5, mitigation: "Backup Power", recovery: "12m", date: "2026-04-25" },
-  { id: "SIM-0247", scenario: "Flood Scenario", trigger: "WS-01", failed: 3, mitigation: "Rerouting", recovery: "18m", date: "2026-04-24" },
-  { id: "SIM-0246", scenario: "Cyber Attack", trigger: "TC-01", failed: 4, mitigation: "Prioritization", recovery: "22m", date: "2026-04-23" },
-  { id: "SIM-0245", scenario: "Substation Failure", trigger: "PG-03", failed: 2, mitigation: "Backup Power", recovery: "9m", date: "2026-04-22" },
-  { id: "SIM-0244", scenario: "Telecom Outage", trigger: "TC-02", failed: 3, mitigation: "None", recovery: "31m", date: "2026-04-21" },
-  { id: "SIM-0243", scenario: "Hospital Surge", trigger: "HC-01", failed: 2, mitigation: "Prioritization", recovery: "14m", date: "2026-04-20" },
-  { id: "SIM-0242", scenario: "Route B Closure", trigger: "TN-02", failed: 2, mitigation: "Rerouting", recovery: "11m", date: "2026-04-19" },
-  { id: "SIM-0241", scenario: "Pump Failure", trigger: "WS-02", failed: 1, mitigation: "Backup Power", recovery: "8m", date: "2026-04-18" },
-  { id: "SIM-0240", scenario: "Dispatch Crash", trigger: "ER-01", failed: 3, mitigation: "Prioritization", recovery: "25m", date: "2026-04-17" },
-  { id: "SIM-0239", scenario: "Grid Overload", trigger: "PG-02", failed: 4, mitigation: "Backup Power", recovery: "16m", date: "2026-04-16" },
-  { id: "SIM-0238", scenario: "Cyber Attack v2", trigger: "TC-01", failed: 5, mitigation: "Rerouting + Priority", recovery: "29m", date: "2026-04-15" },
-  { id: "SIM-0237", scenario: "Storm Cascade", trigger: "PG-01", failed: 6, mitigation: "Backup Power", recovery: "34m", date: "2026-04-14" },
-];
+type HistoryRow = {
+  id: string;
+  scenario: string;
+  trigger: string;
+  failed: number;
+  mitigation: string;
+  recovery: string;
+  date: string;
+  triggerSystem: Sys;
+  recoveryMin: number;
+  resilience: number;
+};
 
 const PAGE_SIZE = 6;
 
@@ -130,25 +103,160 @@ function AnalyticsPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [summary, setSummary] = useState<any>(null);
+  const [sims, setSims] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     let active = true;
-    api.simulations
-      .getSummary()
-      .then((d) => active && setSummary(d ?? null))
-      .catch((e) => active && setError(e?.message ?? "Network error"))
-      .finally(() => active && setLoading(false));
+    let isFirst = true;
+
+    const tick = async () => {
+      try {
+        const [sum, all] = await Promise.all([
+          api.simulations.getSummary().catch(() => null),
+          api.simulations.getAll().catch(() => null),
+        ]);
+        if (!active) return;
+        if (sum) setSummary(sum);
+        const list: any[] = Array.isArray(all)
+          ? all
+          : (all?.data ?? all?.simulations ?? []);
+        setSims(list);
+        setLastUpdated(new Date());
+        setError(null);
+      } catch (e: any) {
+        if (active && isFirst) setError(e?.message ?? "Network error");
+      } finally {
+        if (active && isFirst) {
+          setLoading(false);
+          isFirst = false;
+        }
+      }
+    };
+
+    tick();
+    const id = setInterval(tick, 5000);
+    const onCreated = () => tick();
+    if (typeof window !== "undefined") {
+      window.addEventListener("urbansim:simulation-created", onCreated);
+    }
     return () => {
       active = false;
+      clearInterval(id);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("urbansim:simulation-created", onCreated);
+      }
     };
   }, []);
 
-  const avgDowntime = summary?.avgDowntime ?? summary?.averageDowntime ?? 22;
-  const avgRecovery = summary?.avgRecovery ?? summary?.averageRecovery ?? 14;
-  const avgResilience = summary?.avgResilience ?? summary?.averageResilience ?? null;
+  // ---- Derived real-time metrics from sims + summary ----
+  const history: HistoryRow[] = useMemo(
+    () =>
+      sims.map((r: any, i: number) => {
+        const triggerNode = r.triggerNode ?? r.trigger_node ?? r.trigger ?? "—";
+        const triggerSystem = inferSystem(`${r.scenarioName ?? ""} ${triggerNode}`);
+        const recMin =
+          typeof r.recoveryTime === "number"
+            ? r.recoveryTime
+            : typeof r.recovery === "number"
+              ? r.recovery
+              : Number(String(r.recovery ?? "").replace(/\D/g, "")) || 0;
+        const mitig = Array.isArray(r.mitigations)
+          ? r.mitigations.join(", ")
+          : (r.mitigation ?? "None");
+        return {
+          id: r.id ?? r._id ?? r.simulationId ?? `SIM-${String(i + 1).padStart(4, "0")}`,
+          scenario: r.scenarioName ?? r.scenario ?? "Untitled",
+          trigger: triggerNode,
+          failed:
+            r.failedCount ??
+            r.failed_nodes_count ??
+            r.failedNodes?.length ??
+            r.failedSystems?.length ??
+            0,
+          mitigation: mitig || "None",
+          recovery: recMin ? `${recMin}m` : "—",
+          date: new Date(r.date ?? r.createdAt ?? Date.now())
+            .toISOString()
+            .slice(0, 10),
+          triggerSystem,
+          recoveryMin: recMin,
+          resilience:
+            r.metrics?.resilience ?? r.resilience ?? r.resilienceScore ?? 0,
+        };
+      }),
+    [sims],
+  );
 
+  const failureFreq = useMemo(() => {
+    const counts: Record<Sys, number> = {
+      Power: 0, Transport: 0, Water: 0, Healthcare: 0, Telecom: 0, Emergency: 0,
+    };
+    history.forEach((h) => { counts[h.triggerSystem] += 1; });
+    const data = SYSTEM_KEYS.map((s) => ({ system: s, failures: counts[s] }));
+    return data.some((d) => d.failures > 0) ? data : FALLBACK_FAILURE_FREQ;
+  }, [history]);
+
+  const timeline = useMemo(() => {
+    if (history.length === 0) return FALLBACK_TIMELINE;
+    const sorted = [...history].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+    return sorted.map((h, i) => ({ t: i, affected: h.failed }));
+  }, [history]);
+
+  const resilience = useMemo(() => {
+    const acc: Record<Sys, { sum: number; n: number }> = {
+      Power: { sum: 0, n: 0 }, Transport: { sum: 0, n: 0 }, Water: { sum: 0, n: 0 },
+      Healthcare: { sum: 0, n: 0 }, Telecom: { sum: 0, n: 0 }, Emergency: { sum: 0, n: 0 },
+    };
+    history.forEach((h) => {
+      if (h.resilience > 0) {
+        acc[h.triggerSystem].sum += h.resilience;
+        acc[h.triggerSystem].n += 1;
+      }
+    });
+    const data = SYSTEM_KEYS.map((s) => ({
+      system: s,
+      score: acc[s].n ? Math.round(acc[s].sum / acc[s].n) : 0,
+    }));
+    return data.some((d) => d.score > 0) ? data : FALLBACK_RESILIENCE;
+  }, [history]);
+
+  const heatmap = useMemo<number[][]>(() => {
+    const grid = SYSTEM_KEYS.map(() => SYSTEM_KEYS.map(() => 0));
+    history.forEach((h) => {
+      const i = SYSTEM_KEYS.indexOf(h.triggerSystem);
+      const failedSystems: string[] = Array.isArray((h as any).failedSystems)
+        ? (h as any).failedSystems
+        : [];
+      failedSystems.forEach((fs) => {
+        const j = SYSTEM_KEYS.indexOf(inferSystem(fs));
+        if (i >= 0 && j >= 0 && i !== j) grid[i][j] += 1;
+      });
+    });
+    const max = Math.max(1, ...grid.flat());
+    return grid.map((row, i) =>
+      row.map((v, j) => (i === j ? 0 : Math.round((v / max) * 100))),
+    );
+  }, [history]);
+
+  const avgDowntime =
+    summary?.avgDowntime ?? summary?.averageDowntime ??
+    (history.length ? Math.round(history.reduce((a, h) => a + h.recoveryMin * 1.4, 0) / history.length) : 0);
+  const avgRecovery =
+    summary?.avgRecovery ?? summary?.averageRecovery ??
+    (history.length ? Math.round(history.reduce((a, h) => a + h.recoveryMin, 0) / history.length) : 0);
+  const avgResilience =
+    summary?.avgResilience ?? summary?.averageResilience ??
+    (history.length
+      ? Math.round(history.reduce((a, h) => a + (h.resilience || 0), 0) / Math.max(1, history.filter((h) => h.resilience > 0).length))
+      : null);
+  const avgCascade = history.length
+    ? (history.reduce((a, h) => a + h.failed, 0) / history.length).toFixed(1)
+    : "0.0";
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -158,14 +266,13 @@ function AnalyticsPage() {
         f.toLowerCase().includes(q),
       ),
     );
-  }, [query]);
+  }, [query, history]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const exportPDF = () => {
-    // Lightweight client-side print-to-PDF
     window.print();
   };
 
@@ -184,12 +291,21 @@ function AnalyticsPage() {
 
       {loading && <div className="mb-4"><LoadingState label="Fetching simulation summary…" /></div>}
       {error && <div className="mb-4"><ErrorState message={error} /></div>}
-      {avgResilience !== null && (
-        <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-1.5 text-xs text-success">
-          <span className="font-semibold">Avg Resilience:</span>
-          <span className="font-mono tabular-nums">{avgResilience}%</span>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {avgResilience !== null && (
+          <div className="inline-flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-1.5 text-xs text-success">
+            <span className="font-semibold">Avg Resilience:</span>
+            <span className="font-mono tabular-nums">{avgResilience}%</span>
+          </div>
+        )}
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+          </span>
+          Live{lastUpdated ? ` · ${lastUpdated.toLocaleTimeString()}` : ""}
         </div>
-      )}
+      </div>
 
       {/* Row 1 — KPI cards */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -220,7 +336,7 @@ function AnalyticsPage() {
                   Mean Recovery Time
                 </p>
                 <p className="mt-2 text-3xl font-bold">{avgRecovery} <span className="text-lg font-medium text-muted-foreground">min</span></p>
-                <p className="mt-1 text-xs text-muted-foreground">across 248 simulations</p>
+                <p className="mt-1 text-xs text-muted-foreground">across {history.length} simulations</p>
               </div>
               <div className="rounded-lg border border-primary/30 bg-primary/15 p-2">
                 <Clock className="h-5 w-5 text-primary" />
@@ -236,7 +352,7 @@ function AnalyticsPage() {
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">
                   Avg Cascade Depth
                 </p>
-                <p className="mt-2 text-3xl font-bold">3.2 <span className="text-lg font-medium text-muted-foreground">nodes</span></p>
+                <p className="mt-2 text-3xl font-bold">{avgCascade} <span className="text-lg font-medium text-muted-foreground">nodes</span></p>
                 <p className="mt-1 text-xs text-warning">per incident</p>
               </div>
               <div className="rounded-lg border border-warning/30 bg-warning/15 p-2">
