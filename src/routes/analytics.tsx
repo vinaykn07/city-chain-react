@@ -103,25 +103,153 @@ function AnalyticsPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [summary, setSummary] = useState<any>(null);
+  const [sims, setSims] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     let active = true;
-    api.simulations
-      .getSummary()
-      .then((d) => active && setSummary(d ?? null))
-      .catch((e) => active && setError(e?.message ?? "Network error"))
-      .finally(() => active && setLoading(false));
+    let isFirst = true;
+
+    const tick = async () => {
+      try {
+        const [sum, all] = await Promise.all([
+          api.simulations.getSummary().catch(() => null),
+          api.simulations.getAll().catch(() => null),
+        ]);
+        if (!active) return;
+        if (sum) setSummary(sum);
+        const list: any[] = Array.isArray(all)
+          ? all
+          : (all?.data ?? all?.simulations ?? []);
+        setSims(list);
+        setLastUpdated(new Date());
+        setError(null);
+      } catch (e: any) {
+        if (active && isFirst) setError(e?.message ?? "Network error");
+      } finally {
+        if (active && isFirst) {
+          setLoading(false);
+          isFirst = false;
+        }
+      }
+    };
+
+    tick();
+    const id = setInterval(tick, 5000);
     return () => {
       active = false;
+      clearInterval(id);
     };
   }, []);
 
-  const avgDowntime = summary?.avgDowntime ?? summary?.averageDowntime ?? 22;
-  const avgRecovery = summary?.avgRecovery ?? summary?.averageRecovery ?? 14;
-  const avgResilience = summary?.avgResilience ?? summary?.averageResilience ?? null;
+  // ---- Derived real-time metrics from sims + summary ----
+  const history: HistoryRow[] = useMemo(
+    () =>
+      sims.map((r: any, i: number) => {
+        const triggerNode = r.triggerNode ?? r.trigger_node ?? r.trigger ?? "—";
+        const triggerSystem = inferSystem(`${r.scenarioName ?? ""} ${triggerNode}`);
+        const recMin =
+          typeof r.recoveryTime === "number"
+            ? r.recoveryTime
+            : typeof r.recovery === "number"
+              ? r.recovery
+              : Number(String(r.recovery ?? "").replace(/\D/g, "")) || 0;
+        const mitig = Array.isArray(r.mitigations)
+          ? r.mitigations.join(", ")
+          : (r.mitigation ?? "None");
+        return {
+          id: r.id ?? r._id ?? r.simulationId ?? `SIM-${String(i + 1).padStart(4, "0")}`,
+          scenario: r.scenarioName ?? r.scenario ?? "Untitled",
+          trigger: triggerNode,
+          failed:
+            r.failedCount ??
+            r.failed_nodes_count ??
+            r.failedNodes?.length ??
+            r.failedSystems?.length ??
+            0,
+          mitigation: mitig || "None",
+          recovery: recMin ? `${recMin}m` : "—",
+          date: new Date(r.date ?? r.createdAt ?? Date.now())
+            .toISOString()
+            .slice(0, 10),
+          triggerSystem,
+          recoveryMin: recMin,
+          resilience:
+            r.metrics?.resilience ?? r.resilience ?? r.resilienceScore ?? 0,
+        };
+      }),
+    [sims],
+  );
 
+  const failureFreq = useMemo(() => {
+    const counts: Record<Sys, number> = {
+      Power: 0, Transport: 0, Water: 0, Healthcare: 0, Telecom: 0, Emergency: 0,
+    };
+    history.forEach((h) => { counts[h.triggerSystem] += 1; });
+    const data = SYSTEM_KEYS.map((s) => ({ system: s, failures: counts[s] }));
+    return data.some((d) => d.failures > 0) ? data : FALLBACK_FAILURE_FREQ;
+  }, [history]);
+
+  const timeline = useMemo(() => {
+    if (history.length === 0) return FALLBACK_TIMELINE;
+    const sorted = [...history].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+    return sorted.map((h, i) => ({ t: i, affected: h.failed }));
+  }, [history]);
+
+  const resilience = useMemo(() => {
+    const acc: Record<Sys, { sum: number; n: number }> = {
+      Power: { sum: 0, n: 0 }, Transport: { sum: 0, n: 0 }, Water: { sum: 0, n: 0 },
+      Healthcare: { sum: 0, n: 0 }, Telecom: { sum: 0, n: 0 }, Emergency: { sum: 0, n: 0 },
+    };
+    history.forEach((h) => {
+      if (h.resilience > 0) {
+        acc[h.triggerSystem].sum += h.resilience;
+        acc[h.triggerSystem].n += 1;
+      }
+    });
+    const data = SYSTEM_KEYS.map((s) => ({
+      system: s,
+      score: acc[s].n ? Math.round(acc[s].sum / acc[s].n) : 0,
+    }));
+    return data.some((d) => d.score > 0) ? data : FALLBACK_RESILIENCE;
+  }, [history]);
+
+  const heatmap = useMemo<number[][]>(() => {
+    const grid = SYSTEM_KEYS.map(() => SYSTEM_KEYS.map(() => 0));
+    history.forEach((h) => {
+      const i = SYSTEM_KEYS.indexOf(h.triggerSystem);
+      const failedSystems: string[] = Array.isArray((h as any).failedSystems)
+        ? (h as any).failedSystems
+        : [];
+      failedSystems.forEach((fs) => {
+        const j = SYSTEM_KEYS.indexOf(inferSystem(fs));
+        if (i >= 0 && j >= 0 && i !== j) grid[i][j] += 1;
+      });
+    });
+    const max = Math.max(1, ...grid.flat());
+    return grid.map((row, i) =>
+      row.map((v, j) => (i === j ? 0 : Math.round((v / max) * 100))),
+    );
+  }, [history]);
+
+  const avgDowntime =
+    summary?.avgDowntime ?? summary?.averageDowntime ??
+    (history.length ? Math.round(history.reduce((a, h) => a + h.recoveryMin * 1.4, 0) / history.length) : 0);
+  const avgRecovery =
+    summary?.avgRecovery ?? summary?.averageRecovery ??
+    (history.length ? Math.round(history.reduce((a, h) => a + h.recoveryMin, 0) / history.length) : 0);
+  const avgResilience =
+    summary?.avgResilience ?? summary?.averageResilience ??
+    (history.length
+      ? Math.round(history.reduce((a, h) => a + (h.resilience || 0), 0) / Math.max(1, history.filter((h) => h.resilience > 0).length))
+      : null);
+  const avgCascade = history.length
+    ? (history.reduce((a, h) => a + h.failed, 0) / history.length).toFixed(1)
+    : "0.0";
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -131,14 +259,13 @@ function AnalyticsPage() {
         f.toLowerCase().includes(q),
       ),
     );
-  }, [query]);
+  }, [query, history]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const exportPDF = () => {
-    // Lightweight client-side print-to-PDF
     window.print();
   };
 
