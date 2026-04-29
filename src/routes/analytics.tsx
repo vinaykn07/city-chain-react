@@ -67,33 +67,17 @@ const SYSTEM_COLORS: Record<string, string> = {
   Emergency: "oklch(0.65 0.22 25)",
 };
 
-const failureFreq = [
-  { system: "Power", failures: 18 },
-  { system: "Transport", failures: 12 },
-  { system: "Water", failures: 7 },
-  { system: "Healthcare", failures: 14 },
-  { system: "Telecom", failures: 9 },
-  { system: "Emergency", failures: 16 },
-];
+const SYSTEM_KEYS = ["Power", "Transport", "Water", "Healthcare", "Telecom", "Emergency"] as const;
+type Sys = typeof SYSTEM_KEYS[number];
 
-const timeline = Array.from({ length: 30 }, (_, i) => ({
-  t: i,
-  affected: Math.max(
-    0,
-    Math.round(
-      4 + Math.sin(i / 3) * 4 + (i > 8 && i < 22 ? 6 : 0) + Math.random() * 1.5,
-    ),
-  ),
-}));
+function inferSystem(s: string): Sys {
+  const v = (s ?? "").toString().toLowerCase();
+  return (SYSTEM_KEYS.find((k) => v.includes(k.toLowerCase())) ?? "Power") as Sys;
+}
 
-const resilience = [
-  { system: "Power Grid", score: 85 },
-  { system: "Transportation", score: 72 },
-  { system: "Water Supply", score: 90 },
-  { system: "Healthcare", score: 65 },
-  { system: "Telecom", score: 78 },
-  { system: "Emergency", score: 60 },
-];
+const FALLBACK_FAILURE_FREQ = SYSTEM_KEYS.map((s) => ({ system: s, failures: 0 }));
+const FALLBACK_TIMELINE = Array.from({ length: 12 }, (_, i) => ({ t: i, affected: 0 }));
+const FALLBACK_RESILIENCE = SYSTEM_KEYS.map((s) => ({ system: s, score: 0 }));
 const resilienceColor = (s: number) =>
   s > 75 ? "oklch(0.72 0.18 145)" : s >= 50 ? "oklch(0.78 0.16 75)" : "oklch(0.65 0.22 25)";
 
