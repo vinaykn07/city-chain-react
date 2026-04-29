@@ -83,15 +83,6 @@ const resilienceColor = (s: number) =>
 
 // Heatmap: rows = source of failure, cols = affected system. Values 0..100.
 const HEATMAP_SYSTEMS = ["Power", "Transport", "Water", "Healthcare", "Telecom", "Emergency"];
-const heatmap: number[][] = [
-  // Power affects:           P    T    W    H    Tc   E
-  /* Power      */           [0,  85,  78,  82,  74,  80],
-  /* Transport  */           [5,  0,   12,  35,  8,   62],
-  /* Water      */           [3,  18,  0,   55,  6,   28],
-  /* Healthcare */           [2,  6,   8,   0,   4,   45],
-  /* Telecom    */           [4,  22,  10,  68,  0,   72],
-  /* Emergency  */           [1,  10,  4,   30,  6,   0],
-];
 
 const history = [
   { id: "SIM-0248", scenario: "Northeast Blackout", trigger: "PG-01", failed: 5, mitigation: "Backup Power", recovery: "12m", date: "2026-04-25" },
