@@ -138,9 +138,16 @@ function AnalyticsPage() {
 
     tick();
     const id = setInterval(tick, 5000);
+    const onCreated = () => tick();
+    if (typeof window !== "undefined") {
+      window.addEventListener("urbansim:simulation-created", onCreated);
+    }
     return () => {
       active = false;
       clearInterval(id);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("urbansim:simulation-created", onCreated);
+      }
     };
   }, []);
 
