@@ -320,7 +320,7 @@ function AnalyticsPage() {
                   Mean Recovery Time
                 </p>
                 <p className="mt-2 text-3xl font-bold">{avgRecovery} <span className="text-lg font-medium text-muted-foreground">min</span></p>
-                <p className="mt-1 text-xs text-muted-foreground">across 248 simulations</p>
+                <p className="mt-1 text-xs text-muted-foreground">across {history.length} simulations</p>
               </div>
               <div className="rounded-lg border border-primary/30 bg-primary/15 p-2">
                 <Clock className="h-5 w-5 text-primary" />
