@@ -336,7 +336,7 @@ function AnalyticsPage() {
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">
                   Avg Cascade Depth
                 </p>
-                <p className="mt-2 text-3xl font-bold">3.2 <span className="text-lg font-medium text-muted-foreground">nodes</span></p>
+                <p className="mt-2 text-3xl font-bold">{avgCascade} <span className="text-lg font-medium text-muted-foreground">nodes</span></p>
                 <p className="mt-1 text-xs text-warning">per incident</p>
               </div>
               <div className="rounded-lg border border-warning/30 bg-warning/15 p-2">
