@@ -84,20 +84,18 @@ const resilienceColor = (s: number) =>
 // Heatmap: rows = source of failure, cols = affected system. Values 0..100.
 const HEATMAP_SYSTEMS = ["Power", "Transport", "Water", "Healthcare", "Telecom", "Emergency"];
 
-const history = [
-  { id: "SIM-0248", scenario: "Northeast Blackout", trigger: "PG-01", failed: 5, mitigation: "Backup Power", recovery: "12m", date: "2026-04-25" },
-  { id: "SIM-0247", scenario: "Flood Scenario", trigger: "WS-01", failed: 3, mitigation: "Rerouting", recovery: "18m", date: "2026-04-24" },
-  { id: "SIM-0246", scenario: "Cyber Attack", trigger: "TC-01", failed: 4, mitigation: "Prioritization", recovery: "22m", date: "2026-04-23" },
-  { id: "SIM-0245", scenario: "Substation Failure", trigger: "PG-03", failed: 2, mitigation: "Backup Power", recovery: "9m", date: "2026-04-22" },
-  { id: "SIM-0244", scenario: "Telecom Outage", trigger: "TC-02", failed: 3, mitigation: "None", recovery: "31m", date: "2026-04-21" },
-  { id: "SIM-0243", scenario: "Hospital Surge", trigger: "HC-01", failed: 2, mitigation: "Prioritization", recovery: "14m", date: "2026-04-20" },
-  { id: "SIM-0242", scenario: "Route B Closure", trigger: "TN-02", failed: 2, mitigation: "Rerouting", recovery: "11m", date: "2026-04-19" },
-  { id: "SIM-0241", scenario: "Pump Failure", trigger: "WS-02", failed: 1, mitigation: "Backup Power", recovery: "8m", date: "2026-04-18" },
-  { id: "SIM-0240", scenario: "Dispatch Crash", trigger: "ER-01", failed: 3, mitigation: "Prioritization", recovery: "25m", date: "2026-04-17" },
-  { id: "SIM-0239", scenario: "Grid Overload", trigger: "PG-02", failed: 4, mitigation: "Backup Power", recovery: "16m", date: "2026-04-16" },
-  { id: "SIM-0238", scenario: "Cyber Attack v2", trigger: "TC-01", failed: 5, mitigation: "Rerouting + Priority", recovery: "29m", date: "2026-04-15" },
-  { id: "SIM-0237", scenario: "Storm Cascade", trigger: "PG-01", failed: 6, mitigation: "Backup Power", recovery: "34m", date: "2026-04-14" },
-];
+type HistoryRow = {
+  id: string;
+  scenario: string;
+  trigger: string;
+  failed: number;
+  mitigation: string;
+  recovery: string;
+  date: string;
+  triggerSystem: Sys;
+  recoveryMin: number;
+  resilience: number;
+};
 
 const PAGE_SIZE = 6;
 
