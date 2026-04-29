@@ -284,12 +284,21 @@ function AnalyticsPage() {
 
       {loading && <div className="mb-4"><LoadingState label="Fetching simulation summary…" /></div>}
       {error && <div className="mb-4"><ErrorState message={error} /></div>}
-      {avgResilience !== null && (
-        <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-1.5 text-xs text-success">
-          <span className="font-semibold">Avg Resilience:</span>
-          <span className="font-mono tabular-nums">{avgResilience}%</span>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {avgResilience !== null && (
+          <div className="inline-flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-1.5 text-xs text-success">
+            <span className="font-semibold">Avg Resilience:</span>
+            <span className="font-mono tabular-nums">{avgResilience}%</span>
+          </div>
+        )}
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+          </span>
+          Live{lastUpdated ? ` · ${lastUpdated.toLocaleTimeString()}` : ""}
         </div>
-      )}
+      </div>
 
       {/* Row 1 — KPI cards */}
       <div className="grid gap-4 md:grid-cols-3">
